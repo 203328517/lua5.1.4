@@ -451,7 +451,7 @@ const TValue *luaH_getnum (Table *t, int key) {
 
 /*
 ** search function for strings
-** get value by key
+** get value by TString key
 */
 const TValue *luaH_getstr (Table *t, TString *key) {
   Node *n = hashstr(t, key);
