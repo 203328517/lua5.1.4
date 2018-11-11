@@ -49,9 +49,18 @@
 
 #define hashpow2(t,n)      (gnode(t, lmod((n), sizenode(t))))
   
-#define hashstr(t,str)  hashpow2(t, (str)->tsv.hash)
+//#define hashstr(t,str)  hashpow2(t, (str)->tsv.hash)
 #define hashboolean(t,p)        hashpow2(t, p)
 
+// for debug
+Node *hashstr(Table *t, TString *key){
+    unsigned int hash = key->tsv.hash;
+    unsigned int i = lmod(hash, sizenode(t));
+
+    Node *n = &(t)->node[i];
+
+    return n;
+}
 
 /*
 ** for some types, it is better to avoid modulus by power of 2, as
@@ -243,7 +252,7 @@ static int numusearray (const Table *t, int *nums) {
   return ause;
 }
 
-
+//return used number of nodes
 static int numusehash (const Table *t, int *nums, int *pnasize) {
   int totaluse = 0;  /* total number of elements */
   int ause = 0;  /* summation of `nums' */
@@ -313,6 +322,7 @@ static void resize (lua_State *L, Table *t, int nasize, int nhsize) {
     /* shrink array */
     luaM_reallocvector(L, t->array, oldasize, nasize, TValue);
   }
+
   /* re-insert elements from hash part */
   for (i = twoto(oldhsize) - 1; i >= 0; i--) {
     Node *old = nold+i;
@@ -390,25 +400,34 @@ static Node *getfreepos (Table *t) {
 
 
 /*
-** inserts a new key into a hash table; first, check whether key's main 
-** position is free. If not, check whether colliding node is in its main 
-** position or not: if it is not, move colliding node to an empty place and 
-** put new key in its main position; otherwise (colliding node is in its main 
-** position), new key goes to an empty position. 
+** inserts a new key into a hash table;
+** first, check whether key's main position is free.
+** If not, check whether colliding node is in its main position or not:
+** if it is not, move colliding node to an empty place and put new key in its main position;
+** otherwise (colliding node is in its main position), new key goes to an empty position.
 */
 static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
+
   Node *mp = mainposition(t, key);
   if (!ttisnil(gval(mp)) || mp == dummynode) {
     Node *othern;
-    Node *n = getfreepos(t);  /* get a free place */
+    Node *n = getfreepos(t);  /* get a free place from t->node according to t->lastfree */
+
     if (n == NULL) {  /* cannot find a free place? */
       rehash(L, t, key);  /* grow table */
       return luaH_set(L, t, key);  /* re-insert key into grown table */
     }
+
     lua_assert(n != dummynode);
+
     othern = mainposition(t, key2tval(mp));
-    if (othern != mp) {  /* is colliding node out of its main position? */
-      /* yes; move colliding node into free position */
+
+    if (othern != mp) {
+      /*
+       * if the slot was taken,  copy the data to a newly found free slot(by getfreepos),
+       * let the slot be free
+       */
+
       while (gnext(othern) != mp) othern = gnext(othern);  /* find previous */
       gnext(othern) = n;  /* redo the chain with `n' in place of `mp' */
       *n = *mp;  /* copy colliding node into free pos. (mp->next also goes) */
@@ -431,12 +450,16 @@ static TValue *newkey (lua_State *L, Table *t, const TValue *key) {
 
 /*
 ** search function for integers
+** if integer index exceed the array size, use t->node to store data
 */
 const TValue *luaH_getnum (Table *t, int key) {
   /* (1 <= key && key <= t->sizearray) */
   if (cast(unsigned int, key-1) < cast(unsigned int, t->sizearray))
     return &t->array[key-1];
   else {
+    /*
+     * compute the hash and store the data to t->node
+     */
     lua_Number nk = cast_num(key);
     Node *n = hashnum(t, nk);
     do {  /* check whether `key' is somewhere in the chain */

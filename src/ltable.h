@@ -17,6 +17,8 @@
 
 #define key2tval(n)	(&(n)->i_key.tvk)
 
+//for code debug
+Node *hashstr(Table *t, TString *key);
 
 LUAI_FUNC const TValue *luaH_getnum (Table *t, int key);
 LUAI_FUNC TValue *luaH_setnum (lua_State *L, Table *t, int key);

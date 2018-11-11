@@ -1,3 +1,6 @@
+#ifndef __BASE_H__
+#define __BASE_H__
+
 #include <stdio.h>
 #include <lua.h>
 #include <lualib.h>
@@ -6,15 +9,8 @@
 #include <lstring.h>
 #include <lobject.h>
 
-const char *out_type[] = {
-    "nil",
-    "boolean",
-    "lightuserdata",
-    "number",
-    "string",
-    "table",
-    "function",
-    "userdata",
-    "thread",
-    NULL
-};
+void dump_v(TValue *v);
+void indent_p(const char * format, ...);
+
+
+#endif

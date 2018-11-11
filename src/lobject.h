@@ -351,6 +351,9 @@ typedef struct Table {
 
 /*
 ** `module' operation for hashing (size is always a power of 2)
+** normal module operation is s % size
+** because of size is always a power of 2, so (s % size) == (s & (size - 1))
+** the latter is more efficient
 */
 #define lmod(s,size) \
 	(check_exp((size&(size-1))==0, (cast(int, (s) & ((size)-1)))))
