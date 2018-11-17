@@ -61,11 +61,19 @@ static TString *newlstr (lua_State *L, const char *str, size_t l,
   ts->tsv.reserved = 0;
   memcpy(ts+1, str, l*sizeof(char));
   ((char *)(ts+1))[l] = '\0';  /* ending 0 */
+
+
   tb = &G(L)->strt;
   h = lmod(h, tb->size);
+
   ts->tsv.next = tb->hash[h];  /* chain new entry */
   tb->hash[h] = obj2gco(ts);
   tb->nuse++;
+
+  /*
+   * if number of elements larger than number of buckets,
+   * then double tb->size
+   */
   if (tb->nuse > cast(lu_int32, tb->size) && tb->size <= MAX_INT/2)
     luaS_resize(L, tb->size*2);  /* too crowded */
   return ts;
@@ -79,12 +87,20 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
   size_t l1;
   for (l1=l; l1>=step; l1-=step)  /* compute hash */
     h = h ^ ((h<<5)+(h>>2)+cast(unsigned char, str[l1-1]));
+
+  /*
+   * if hash slot not NULL,then traverse it,if TString object already exits,just return it.
+   */
   for (o = G(L)->strt.hash[lmod(h, G(L)->strt.size)];
        o != NULL;
        o = o->gch.next) {
     TString *ts = rawgco2ts(o);
     if (ts->tsv.len == l && (memcmp(str, getstr(ts), l) == 0)) {
-      /* string may be dead */
+      /*
+       * string may be dead(will be collected), mark it to white
+       * tell garbage collector this is not a garbage
+       * so we can reuse it
+       */
       if (isdead(G(L), o)) changewhite(o);
       return ts;
     }

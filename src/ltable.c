@@ -451,10 +451,14 @@ const TValue *luaH_getnum (Table *t, int key) {
 
 /*
 ** search function for strings
+** get value by key
 */
 const TValue *luaH_getstr (Table *t, TString *key) {
   Node *n = hashstr(t, key);
   do {  /* check whether `key' is somewhere in the chain */
+    /*
+     * here,just compare the TString address,more efficient
+     */
     if (ttisstring(gkey(n)) && rawtsvalue(gkey(n)) == key)
       return gval(n);  /* that's it */
     else n = gnext(n);
